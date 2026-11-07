@@ -32,6 +32,18 @@ const CustomScrollView: React.FC<CustomScrollViewProps> = ({
   const scrollViewRef = useRef<ScrollView>(null);
   const firstCardRef = useRef<any>(null); // <--- 新增
   const [showScrollToTop, setShowScrollToTop] = useState(false);
+  const prevFirstItemRef = useRef<any>(null);
+
+  // 切分类后数据是全新一拨（首项变了），把列表滚回顶部；下拉追加时首项不变，不回滚。
+  // 不加这一步，ScrollView 会保留上个分类滚到底的位置：切到「最近播放」（本地记录加载极快，
+  // loading 闪一下就过、列表来不及卸载重挂）时还停在底部，遥控器按「下」就直接落在最后一行。
+  useEffect(() => {
+    const firstItem = data.length > 0 ? data[0] : null;
+    if (firstItem && firstItem !== prevFirstItemRef.current) {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+    }
+    prevFirstItemRef.current = firstItem;
+  }, [data]);
   const responsiveConfig = useResponsiveLayout();
   const commonStyles = getCommonResponsiveStyles(responsiveConfig);
   const { deviceType } = responsiveConfig;

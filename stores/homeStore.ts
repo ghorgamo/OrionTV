@@ -21,15 +21,15 @@ export type RowItem = (SearchResult | PlayRecord) & {
 
 export interface Category {
   title: string;
-  type?: "movie" | "tv" | "record";
+  type?: "movie" | "tv" | "record" | "latest";
   tag?: string;
   tags?: string[];
 }
 
 const initialCategories: Category[] = [
-  { title: "最近播放", type: "record" },
-  { title: "热门剧集", type: "tv", tag: "热门" },
+  { title: "最近更新", type: "latest", tags: ["剧集", "电影", "综艺", "动漫"] },
   { title: "电视剧", type: "tv", tags: ["国产剧", "美剧", "英剧", "韩剧", "日剧", "港剧", "日本动画", "动画"] },
+  { title: "热门剧集", type: "tv", tag: "热门" },
   {
     title: "电影",
     type: "movie",
@@ -53,13 +53,14 @@ const initialCategories: Category[] = [
   },
   { title: "综艺", type: "tv", tag: "综艺" },
   { title: "豆瓣 Top250", type: "movie", tag: "top250" },
+  { title: "最近播放", type: "record" },
 ];
 
 // 添加缓存项接口
 interface CacheItem {
   data: RowItem[];
   timestamp: number;
-  type: 'movie' | 'tv' | 'record';
+  type: 'movie' | 'tv' | 'record' | 'latest';
   hasMore: boolean;
 }
 
@@ -172,18 +173,37 @@ const useHomeStore = create<HomeState>((set, get) => ({
 
         set({ contentData: rowItems, hasMore: false });
       } else if (selectedCategory.type && selectedCategory.tag) {
-        const result = await api.getDoubanData(
-          selectedCategory.type,
-          selectedCategory.tag,
-          20,
-          pageStart
-        );
+        // 「最近更新」走 MoonTV /api/latest，其余走豆瓣接口；取数后共用下面的缓存与翻页逻辑
+        let newItems: RowItem[];
+        let hasMoreResult: boolean;
+        if (selectedCategory.type === "latest") {
+          const result = await api.getLatestData(
+            selectedCategory.tag,
+            20,
+            pageStart
+          );
 
-        const newItems = result.list.map((item) => ({
-          ...item,
-          id: item.title,
-          source: "douban",
-        })) as RowItem[];
+          newItems = result.results.map((item) => ({
+            ...item,
+            id: item.id,
+            source: item.source,
+          })) as RowItem[];
+          hasMoreResult = result.results.length !== 0;
+        } else {
+          const result = await api.getDoubanData(
+            selectedCategory.type,
+            selectedCategory.tag,
+            20,
+            pageStart
+          );
+
+          newItems = result.list.map((item) => ({
+            ...item,
+            id: item.title,
+            source: "douban",
+          })) as RowItem[];
+          hasMoreResult = result.list.length !== 0;
+        }
 
         const cacheKey = getCacheKey(selectedCategory);
 
@@ -215,7 +235,7 @@ const useHomeStore = create<HomeState>((set, get) => ({
           set({
             contentData: newItems, // 使用完整的新数据
             pageStart: newItems.length,
-            hasMore: result.list.length !== 0,
+            hasMore: hasMoreResult,
           });
         } else {
           // 增量加载时更新缓存
@@ -238,7 +258,7 @@ const useHomeStore = create<HomeState>((set, get) => ({
           set((state) => ({
             contentData: [...state.contentData, ...newItems],
             pageStart: state.pageStart + newItems.length,
-            hasMore: result.list.length !== 0,
+            hasMore: hasMoreResult,
           }));
         }
       } else if (selectedCategory.tags) {

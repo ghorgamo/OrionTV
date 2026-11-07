@@ -233,6 +233,31 @@ export class API {
     return response.json();
   }
 
+  // 首页「最近更新」：调 MoonTV /api/latest（资源站最新更新），按添加时间排（sort=add，
+  // 与 MoonTV /latest 页默认一致）。tag 为显示名（剧集/电影/综艺/动漫），映射到接口的 category。
+  // /api/latest 用 pg（页码，上限 5）+ limit 分页；pageStart 超过 5 页时返回空，调用方据此收尾。
+  async getLatestData(
+    tag: string,
+    pageSize: number = 20,
+    pageStart: number = 0
+  ): Promise<{ results: SearchResult[] }> {
+    const categoryMap: Record<string, string> = {
+      剧集: "tv",
+      电影: "movie",
+      综艺: "variety",
+      动漫: "anime",
+    };
+    const category = categoryMap[tag] || "tv";
+    const limit = Math.min(Math.max(pageSize, 1), 60);
+    const pg = Math.floor(pageStart / limit) + 1;
+    if (pg > 5) {
+      return { results: [] };
+    }
+    const url = `/api/latest?category=${category}&limit=${limit}&pg=${pg}&sort=add`;
+    const response = await this._fetch(url);
+    return response.json();
+  }
+
   async searchVideos(query: string): Promise<{ results: SearchResult[] }> {
     const url = `/api/search?q=${encodeURIComponent(query)}`;
     const response = await this._fetch(url);

@@ -44,6 +44,7 @@ const VideoCard = forwardRef<View, VideoCardProps>(
       onRecordDeleted,
       api,
       playTime = 0,
+      hasTVPreferredFocus,
     }: VideoCardProps,
     ref
   ) => {
@@ -156,6 +157,7 @@ const VideoCard = forwardRef<View, VideoCardProps>(
           onLongPress={handleLongPress}
           onFocus={handleFocus}
           onBlur={handleBlur}
+          hasTVPreferredFocus={hasTVPreferredFocus}
           style={({ pressed }) => [
             styles.pressable,
             {

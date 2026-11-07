@@ -163,7 +163,7 @@ export default function HomeScreen() {
     );
   };
 
-  const renderContentItem = ({ item }: { item: RowItem; index: number }) => (
+  const renderContentItem = ({ item, index }: { item: RowItem; index: number }) => (
     <VideoCard
       id={item.id}
       source={item.source}
@@ -178,6 +178,9 @@ export default function HomeScreen() {
       totalEpisodes={item.totalEpisodes}
       api={api}
       onRecordDeleted={fetchInitialData}
+      // 首张卡片为遥控器焦点入口：从分类行按「下」时优先落到第一行第一张，
+      // 而不是让 Android 焦点搜索在 ScrollView 里跳到最后一行
+      hasTVPreferredFocus={index === 0}
     />
   );
 
