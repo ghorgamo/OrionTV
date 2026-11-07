@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, FlatList, StyleSheet, ActivityIndicator, Modal, useTVEventHandler, HWEvent, Text } from "react-native";
 import LivePlayer from "@/components/LivePlayer";
 import { fetchAndParseM3u, getPlayableUrl, Channel } from "@/services/m3u";
+import { api } from "@/services/api";
 import { ThemedView } from "@/components/ThemedView";
 import { StyledButton } from "@/components/StyledButton";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -34,9 +35,20 @@ export default function LiveScreen() {
 
   useEffect(() => {
     const loadChannels = async () => {
-      if (!m3uUrl) return;
+      let url = m3uUrl;
+      if (!url) {
+        // 本地没手动填直播源时，从 MoonTV 站取 /api/live/sources 的首条；
+        // 取不到就保持空白（和原来一样），不报错。
+        try {
+          const result = await api.getLiveSources();
+          url = result?.data?.[0]?.url || "";
+        } catch {
+          url = "";
+        }
+      }
+      if (!url) return;
       setIsLoading(true);
-      const parsedChannels = await fetchAndParseM3u(m3uUrl);
+      const parsedChannels = await fetchAndParseM3u(url);
       setChannels(parsedChannels);
 
       const groups: Record<string, Channel[]> = parsedChannels.reduce((acc, channel) => {

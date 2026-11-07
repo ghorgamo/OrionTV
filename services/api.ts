@@ -157,6 +157,16 @@ export class API {
     return response.json();
   }
 
+  // 直播源：取 MoonTV 站 /api/live/sources 的首条（config.json 的 live_sources）。
+  // 官方版只认本地手动填的 M3U，不填就一直是空的；这里让它没填时自动走站里配好的源。
+  async getLiveSources(): Promise<{
+    success: boolean;
+    data: { key: string; name: string; url: string; ua?: string }[];
+  }> {
+    const response = await this._fetch("/api/live/sources");
+    return response.json();
+  }
+
   async getFavorites(key?: string): Promise<Record<string, Favorite> | Favorite | null> {
     const url = key ? `/api/favorites?key=${encodeURIComponent(key)}` : "/api/favorites";
     const response = await this._fetch(url);

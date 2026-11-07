@@ -26,6 +26,11 @@ export interface Category {
   tags?: string[];
 }
 
+// 「最近播放」分类对象：恢复时用它追加到末尾。
+// 注意不能用 initialCategories[0] 来恢复——重排后首项已是「最近更新」；
+// 用首项恢复会在每次回主页时重复塞入一个「最近更新」，且永远补不回「最近播放」。
+const recordCategory: Category = { title: "最近播放", type: "record" };
+
 const initialCategories: Category[] = [
   { title: "最近更新", type: "latest", tags: ["剧集", "电影", "综艺", "动漫"] },
   { title: "电视剧", type: "tv", tags: ["国产剧", "美剧", "英剧", "韩剧", "日剧", "港剧", "日本动画", "动画"] },
@@ -53,7 +58,7 @@ const initialCategories: Category[] = [
   },
   { title: "综艺", type: "tv", tag: "综艺" },
   { title: "豆瓣 Top250", type: "movie", tag: "top250" },
-  { title: "最近播放", type: "record" },
+  recordCategory,
 ];
 
 // 添加缓存项接口
@@ -356,7 +361,7 @@ const useHomeStore = create<HomeState>((set, get) => ({
     set((state) => {
       const recordCategoryExists = state.categories.some((c) => c.type === "record");
       if (hasRecords && !recordCategoryExists) {
-        return { categories: [initialCategories[0], ...state.categories] };
+        return { categories: [...state.categories, recordCategory] };
       }
       if (!hasRecords && recordCategoryExists) {
         const newCategories = state.categories.filter((c) => c.type !== "record");
