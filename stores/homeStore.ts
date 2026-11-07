@@ -32,7 +32,7 @@ export interface Category {
 const recordCategory: Category = { title: "最近播放", type: "record" };
 
 const initialCategories: Category[] = [
-  { title: "最近更新", type: "latest", tags: ["剧集", "电影", "综艺", "动漫"] },
+  { title: "最近更新", type: "latest", tags: ["剧集", "电影", "综艺", "纪录片", "动漫"] },
   { title: "电视剧", type: "tv", tags: ["国产剧", "美剧", "英剧", "韩剧", "日剧", "港剧", "日本动画", "动画"] },
   { title: "热门剧集", type: "tv", tag: "热门" },
   {
@@ -73,8 +73,13 @@ const CACHE_EXPIRE_TIME = 5 * 60 * 1000; // 5分钟过期
 const MAX_CACHE_SIZE = 10; // 最大缓存容量
 const MAX_ITEMS_PER_CACHE = 40; // 每个缓存最大条目数
 
-const getCacheKey = (category: Category) => {
-  return `${category.type || 'unknown'}-${category.title}-${category.tag || ''}`;
+const getCacheKey = (category: Category, sort?: string, year?: string) => {
+  const base = `${category.type || 'unknown'}-${category.title}-${category.tag || ''}`;
+  // 最近更新的排序与年份不同时内容不同，须进缓存键，否则切排序/年份会命中旧缓存
+  if (category.type === 'latest') {
+    return `${base}-${sort || 'add'}-${year || 'all'}`;
+  }
+  return base;
 };
 
 const isValidCache = (cacheItem: CacheItem) => {
@@ -90,6 +95,11 @@ interface HomeState {
   pageStart: number;
   hasMore: boolean;
   error: string | null;
+  // 最近更新的排序与年份筛选（只对 latest 分类生效，切栏目后保留）
+  latestSort: "add" | "update";
+  latestYear: "all" | "this" | "last" | "older";
+  setLatestSort: (sort: "add" | "update") => void;
+  setLatestYear: (year: "all" | "this" | "last" | "older") => void;
   fetchInitialData: () => Promise<void>;
   loadMoreData: () => Promise<void>;
   selectCategory: (category: Category) => void;
@@ -109,13 +119,27 @@ const useHomeStore = create<HomeState>((set, get) => ({
   pageStart: 0,
   hasMore: true,
   error: null,
+  latestSort: "add",
+  latestYear: "all",
+
+  setLatestSort: (sort) => {
+    if (get().latestSort === sort) return;
+    set({ latestSort: sort, contentData: [], pageStart: 0, hasMore: true, error: null });
+    get().fetchInitialData();
+  },
+
+  setLatestYear: (year) => {
+    if (get().latestYear === year) return;
+    set({ latestYear: year, contentData: [], pageStart: 0, hasMore: true, error: null });
+    get().fetchInitialData();
+  },
 
   fetchInitialData: async () => {
     const { apiBaseUrl } = useSettingsStore.getState();
     await useAuthStore.getState().checkLoginStatus(apiBaseUrl);
 
     const { selectedCategory } = get();
-    const cacheKey = getCacheKey(selectedCategory);
+    const cacheKey = getCacheKey(selectedCategory, get().latestSort, get().latestYear);
 
     // 最近播放不缓存，始终实时获取
     if (selectedCategory.type === 'record') {
@@ -185,7 +209,9 @@ const useHomeStore = create<HomeState>((set, get) => ({
           const result = await api.getLatestData(
             selectedCategory.tag,
             20,
-            pageStart
+            pageStart,
+            get().latestSort,
+            get().latestYear
           );
 
           newItems = result.results.map((item) => ({
@@ -210,7 +236,7 @@ const useHomeStore = create<HomeState>((set, get) => ({
           hasMoreResult = result.list.length !== 0;
         }
 
-        const cacheKey = getCacheKey(selectedCategory);
+        const cacheKey = getCacheKey(selectedCategory, get().latestSort, get().latestYear);
 
         if (pageStart === 0) {
           // 清理过期缓存
@@ -301,7 +327,7 @@ const useHomeStore = create<HomeState>((set, get) => ({
 
   selectCategory: (category: Category) => {
     const currentCategory = get().selectedCategory;
-    const cacheKey = getCacheKey(category);
+    const cacheKey = getCacheKey(category, get().latestSort, get().latestYear);
 
     if (currentCategory.title !== category.title || currentCategory.tag !== category.tag) {
       set({

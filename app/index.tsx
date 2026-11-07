@@ -38,6 +38,10 @@ export default function HomeScreen() {
     loading,
     loadingMore,
     error,
+    latestSort,
+    latestYear,
+    setLatestSort,
+    setLatestYear,
     fetchInitialData,
     loadMoreData,
     selectCategory,
@@ -325,6 +329,60 @@ export default function HomeScreen() {
             contentContainerStyle={dynamicStyles.categoryListContent}
           />
         </View>
+      )}
+
+      {/* 最近更新的排序与年份筛选（只在「最近更新」下显示） */}
+      {selectedCategory?.type === "latest" && (
+        <>
+          <View style={dynamicStyles.categoryContainer}>
+            <FlatList
+              data={[
+                { label: "添加时间", value: "add" },
+                { label: "更新时间", value: "update" },
+              ]}
+              renderItem={({ item, index }) => (
+                <StyledButton
+                  hasTVPreferredFocus={index === 0}
+                  text={item.label}
+                  onPress={() => setLatestSort(item.value as "add" | "update")}
+                  isSelected={latestSort === item.value}
+                  style={dynamicStyles.categoryButton}
+                  textStyle={dynamicStyles.categoryText}
+                  variant="ghost"
+                />
+              )}
+              keyExtractor={(item) => item.value}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={dynamicStyles.categoryListContent}
+            />
+          </View>
+          <View style={dynamicStyles.categoryContainer}>
+            <FlatList
+              data={[
+                { label: "全部", value: "all" },
+                { label: "今年", value: "this" },
+                { label: "去年", value: "last" },
+                { label: "更早", value: "older" },
+              ]}
+              renderItem={({ item, index }) => (
+                <StyledButton
+                  hasTVPreferredFocus={index === 0}
+                  text={item.label}
+                  onPress={() => setLatestYear(item.value as "all" | "this" | "last" | "older")}
+                  isSelected={latestYear === item.value}
+                  style={dynamicStyles.categoryButton}
+                  textStyle={dynamicStyles.categoryText}
+                  variant="ghost"
+                />
+              )}
+              keyExtractor={(item) => item.value}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={dynamicStyles.categoryListContent}
+            />
+          </View>
+        </>
       )}
 
       {/* 内容网格 */}
